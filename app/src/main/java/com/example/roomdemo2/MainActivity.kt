@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -34,7 +35,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             RoomDemo2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ScreenSetup(modifier = Modifier.padding(innerPadding))
+                    val owner = LocalViewModelStoreOwner.current
+                    owner?.let {
+                        val viewModel: MainViewModel = viewModel(
+                            it,
+                            "MainViewModel",
+                            MainViewModelFactory(
+                                LocalContext.current.applicationContext as Application
+                            )
+                        )
+                        ScreenSetup(
+                            modifier = Modifier.padding(innerPadding),
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
@@ -42,11 +56,104 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ScreenSetup(modifier: Modifier = Modifier) {
-    MainScreen(modifier)
+fun ScreenSetup(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+    val allProducts by viewModel.allProducts.observeAsState(listOf())
+    val searchResults by viewModel.searchResults.observeAsState(listOf())
+    MainScreen(
+        modifier = modifier,
+        allProducts = allProducts,
+        searchResults = searchResults,
+        viewModel = viewModel
+    )
 }
 @Composable
-fun MainScreen(modifier: Modifier = Modifier) {
+fun MainScreen(
+    modifier: Modifier = Modifier,
+    allProducts: List<Product>,
+    searchResults: List<Product>,
+    viewModel: MainViewModel
+) {
+    var productName by remember { mutableStateOf("") }
+    var productQuantity by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
+    val onProductTextChange = { text : String ->
+        productName = text
+    }
+    val onQuantityTextChange = { text : String ->
+        productQuantity = text
+    }
+
+    Column(
+        horizontalAlignment = CenterHorizontally,
+        modifier = modifier
+            .fillMaxWidth()
+    ) {
+        CustomTextField(
+            title = "Product Name",
+            textState = productName,
+            onTextChange = onProductTextChange,
+            keyboardType = KeyboardType.Text
+        )
+        CustomTextField(
+            title = "Quantity",
+            textState = productQuantity,
+            onTextChange = onQuantityTextChange,
+            keyboardType = KeyboardType.Number
+        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            Button(onClick = {
+                if (productQuantity.isNotEmpty()) {
+                    viewModel.insertProduct(
+                        Product(
+                            productName,
+                            productQuantity.toInt()
+                        )
+                    )
+                    searching = false
+                }
+            }) {
+                Text("Add")
+            }
+            Button(onClick = {
+                searching = true
+                viewModel.findProduct(productName)
+            }) {
+                Text("Search")
+            }
+            Button(onClick = {
+                searching = false
+                viewModel.deleteProduct(productName)
+            }) {
+                Text("Delete")
+            }
+            Button(onClick = {
+                searching = false
+                productName = ""
+                productQuantity = ""
+            }) {
+                Text("Clear")
+            }
+        }
+    }
+    LazyColumn(
+        Modifier
+            .fillMaxWidth()
+            .padding(10.dp)
+    ) {
+        val list = if (searching) searchResults else allProducts
+        item {
+            TitleRow(head1 = "ID", head2 = "Product", head3 = "Quantity")
+        }
+        items(list) { product ->
+            ProductRow(id = product.id, name = product.productName,
+                quantity = product.quantity)
+        }
+    }
 }
 
 @Composable
@@ -90,13 +197,17 @@ fun CustomTextField(
     OutlinedTextField(
         value = textState,
         onValueChange = { onTextChange(it) },
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType
-        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         singleLine = true,
         label = { Text(title)},
         modifier = Modifier.padding(10.dp),
-        textStyle = TextStyle(fontWeight = FontWeight.Bold,
-            fontSize = 30.sp)
+        textStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp)
     )
+}
+
+class MainViewModelFactory(val application: Application) :
+    ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return MainViewModel(application) as T
+    }
 }

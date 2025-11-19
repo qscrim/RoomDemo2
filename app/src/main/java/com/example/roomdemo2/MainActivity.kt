@@ -76,17 +76,12 @@ fun MainScreen(
     var productName by remember { mutableStateOf("") }
     var productQuantity by remember { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
-    val onProductTextChange = { text : String ->
-        productName = text
-    }
-    val onQuantityTextChange = { text : String ->
-        productQuantity = text
-    }
+    val onProductTextChange = { text: String -> productName = text }
+    val onQuantityTextChange = { text: String -> productQuantity = text }
 
     Column(
         horizontalAlignment = CenterHorizontally,
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         CustomTextField(
             title = "Product Name",
@@ -109,10 +104,7 @@ fun MainScreen(
             Button(onClick = {
                 if (productQuantity.isNotEmpty()) {
                     viewModel.insertProduct(
-                        Product(
-                            productName,
-                            productQuantity.toInt()
-                        )
+                        Product(productName, productQuantity.toInt())
                     )
                     searching = false
                 }
@@ -139,19 +131,25 @@ fun MainScreen(
                 Text("Clear")
             }
         }
-    }
-    LazyColumn(
-        Modifier
-            .fillMaxWidth()
-            .padding(10.dp)
-    ) {
-        val list = if (searching) searchResults else allProducts
-        item {
-            TitleRow(head1 = "ID", head2 = "Product", head3 = "Quantity")
-        }
-        items(list) { product ->
-            ProductRow(id = product.id, name = product.productName,
-                quantity = product.quantity)
+
+        LazyColumn(
+            Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            val list = if (searching) searchResults else allProducts
+
+            item {
+                TitleRow(head1 = "ID", head2 = "Product", head3 = "Quantity")
+            }
+
+            items(list) { product ->
+                ProductRow(
+                    id = product.id,
+                    name = product.productName,
+                    quantity = product.quantity
+                )
+            }
         }
     }
 }
